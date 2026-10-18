@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>سجل السكر اليومي</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
+        onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';"></script>
+
+<style>
+  :root{
+    --primary:#0e7490;
+    --primary-dark:#155e75;
+    --bg:#f1f5f9;
+    --card:#ffffff;
+    --text:#0f172a;
+    --muted:#64748b;
+    --border:#e2e8f0;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:'Cairo',system-ui,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    line-height:1.7;
+    padding-bottom:40px;
+  }
+  header{
+    background:linear-gradient(135deg,#0e7490,#0891b2 60%,#06b6d4);
+    color:#fff;
+    padding:26px 16px 34px;
+    text-align:center;
+    border-radius:0 0 28px 28px;
+    box-shadow:0 8px 24px rgba(14,116,144,.25);
+  }
+  header h1{font-size:1.55rem;font-weight:800;letter-spacing:-.5px;}
+  header p{opacity:.9;font-size:.9rem;margin-top:4px;}
+  .patient-badge{
+    display:none;
+    margin-top:10px;
+    font-size:.9rem;
+    font-weight:700;
+    background:rgba(255,255,255,.18);
+    padding:6px 16px;
+    border-radius:999px;
+    backdrop-filter:blur(4px);
+  }
+  main{max-width:860px;margin:0 auto;padding:0 14px;}
+  .card{
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:20px;
+    margin-top:18px;
+    box-shadow:0 2px 10px rgba(15,23,42,.06);
+    border:1px solid var(--border);
+  }
+  .card h2{
+    font-size:1.08rem;font-weight:800;margin-bottom:14px;
+    display:flex;align-items:center;gap:8px;color:var(--primary-dark);
+  }
+  .card h2 .ico{font-size:1.2rem;}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .grid .full{grid-column:1/-1;}
+  label{display:block;font-size:.85rem;font-weight:700;margin-bottom:5px;color:#334155;}
+  input,select,textarea{
+    width:100%;padding:11px 12px;border:1.5px solid var(--border);
+    border-radius:11px;font-family:inherit;font-size:.95rem;color:var(--text);
+    background:#f8fafc;transition:.15s;
+  }
+  input:focus,select:focus,textarea:focus{
+    outline:none;border-color:var(--primary);background:#fff;
+    box-shadow:0 0 0 3px rgba(14,116,144,.12);
+  }
+  textarea{resize:vertical;min-height:60px;}
+  #value{border:2px solid var(--primary);font-size:1.25rem;font-weight:800;text-align:center;}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:7px;
+    border:none;cursor:pointer;font-family:inherit;font-weight:700;
+    border-radius:12px;padding:12px 20px;font-size:.95rem;transition:.15s;
+  }
+  .btn:active{transform:scale(.97);}
+  .btn-primary{background:linear-gradient(135deg,#0e7490,#0891b2);color:#fff;width:100%;font-size:1rem;padding:14px;box-shadow:0 4px 12px rgba(14,116,144,.3);}
+  .btn-primary:hover{filter:brightness(1.08);}
+  .btn-ghost{background:#f1f5f9;color:#334155;border:1.5px solid var(--border);}
+  .btn-danger{background:#fef2f2;color:#dc2626;border:1.5px solid #fecaca;}
+  .btn-sm{padding:8px 14px;font-size:.83rem;border-radius:9px;}
+
+  .patient-status{
+    margin-top:10px;font-size:.8rem;color:#16a34a;font-weight:700;
+    min-height:18px;
+  }
+  .patient-note{
+    margin-top:6px;font-size:.75rem;color:#64748b;
+  }
+
+  .autosave{
+    display:flex;align-items:center;gap:10px;margin-top:14px;
+    background:#ecfeff;border:1.5px solid #a5f3fc;border-radius:11px;
+    padding:11px 13px;font-size:.83rem;color:#155e75;font-weight:600;
+    flex-wrap:wrap;
+  }
+  .autosave input[type=checkbox]{width:18px;height:18px;accent-color:var(--primary);flex:0 0 auto;cursor:pointer;}
+  .autosave label{margin:0;font-weight:700;cursor:pointer;flex:1;min-width:150px;}
+  .autosave .status{font-size:.78rem;font-weight:800;padding:3px 9px;border-radius:999px;white-space:nowrap;}
+  .status-ok{background:#dcfce7;color:#166534;}
+  .status-warn{background:#ffedd5;color:#9a3412;}
+  .status-off{background:#e2e8f0;color:#475569;}
+
+  #resultCard{display:none;border-right:6px solid var(--primary);}
+  #resultCard.show{display:block;animation:pop .3s ease;}
+  @keyframes pop{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+  .result-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
+  .result-value{font-size:2.1rem;font-weight:800;line-height:1;letter-spacing:-1px;}
+  .result-value small{font-size:.8rem;font-weight:600;color:var(--muted);}
+  .badge{display:inline-block;padding:6px 16px;border-radius:999px;font-weight:800;font-size:.95rem;color:#fff;}
+  .result-meaning{font-size:.92rem;color:#475569;margin-bottom:16px;}
+  .advice-block{margin-top:14px;}
+  .advice-block h4{font-size:.9rem;font-weight:800;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+  .advice-block ul{list-style:none;display:flex;flex-direction:column;gap:7px;}
+  .advice-block li{
+    background:#f8fafc;border:1px solid var(--border);border-radius:10px;
+    padding:9px 12px;font-size:.87rem;position:relative;padding-right:32px;
+  }
+  .advice-block li::before{content:'✓';position:absolute;right:12px;top:9px;color:var(--primary);font-weight:800;font-size:.85rem;}
+  .advice-block.now li::before{content:'➜';color:#f97316;}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px;}
+  .stat{background:#fff;border:1px solid var(--border);border-radius:13px;padding:13px 8px;text-align:center;box-shadow:0 2px 8px rgba(15,23,42,.05);}
+  .stat .num{font-size:1.35rem;font-weight:800;line-height:1.2;}
+  .stat .lbl{font-size:.72rem;color:var(--muted);font-weight:600;margin-top:3px;}
+
+  #chart{width:100%;height:220px;display:block;}
+  .chart-empty{text-align:center;color:var(--muted);font-size:.88rem;padding:30px 0;}
+
+  .tip-box{
+    background:linear-gradient(135deg,#ecfeff,#f0fdfa);
+    border:1.5px solid #a5f3fc;border-radius:13px;padding:15px;
+    font-size:.92rem;color:#155e75;font-weight:600;line-height:1.8;
+    display:flex;align-items:center;gap:10px;
+  }
+  .tip-box .emoji{font-size:1.5rem;flex:0 0 auto;}
+
+  .table-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--border);}
+  table{width:100%;border-collapse:collapse;font-size:.85rem;min-width:520px;}
+  thead{background:#f1f5f9;}
+  th{padding:11px 10px;font-weight:800;color:#475569;text-align:right;white-space:nowrap;font-size:.8rem;}
+  td{padding:10px;border-top:1px solid var(--border);white-space:nowrap;}
+  tbody tr:hover{background:#f8fafc;}
+  .pill{padding:3px 11px;border-radius:999px;font-size:.75rem;font-weight:800;color:#fff;display:inline-block;}
+  .empty-row{text-align:center;color:var(--muted);padding:26px 0;font-size:.88rem;}
+  .toolbar{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px;}
+
+  .disclaimer{
+    max-width:860px;margin:22px auto 0;padding:0 14px;
+    font-size:.78rem;color:var(--muted);text-align:center;line-height:1.8;
+  }
+
+  @media (max-width:560px){
+    .grid{grid-template-columns:1fr;}
+    .stats{grid-template-columns:repeat(2,1fr);}
+    header h1{font-size:1.3rem;}
+    .result-value{font-size:1.75rem;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🩸 سجل السكر اليومي</h1>
+  <p>سجّل قراءتك، اعرف حالتها، وخد نصيحة فورية</p>
+  <div class="patient-badge" id="patientBadge"></div>
+</header>
+
+<main>
+
+  <!-- ======== بيانات المريض ======== -->
+  <section class="card" id="patientCard">
+    <h2><span class="ico">👤</span> بيانات المريض</h2>
+    <div class="grid">
+      <div>
+        <label for="pName">الاسم</label>
+        <input type="text" id="pName" placeholder="مثال: أحمد محمد" maxlength="60">
+      </div>
+      <div>
+        <label for="pAge">السن</label>
+        <input type="number" id="pAge" min="1" max="120" placeholder="مثال: 45">
+      </div>
+    </div>
+    <div class="patient-status" id="patientSaveStatus"></div>
+    <div class="patient-note">💾 بيانات المريض بتتحفظ على جهازك تلقائياً، ومش بتتمسح مع حذف سجل القراءات.</div>
+  </section>
+
+  <!-- ======== فورم التسجيل ======== -->
+  <section class="card">
+    <h2><span class="ico">📝</span> تسجيل قراءة جديدة</h2>
+    <form id="form">
+      <div class="grid">
+        <div class="full">
+          <label for="value">قراءة السكر (mg/dL)</label>
+          <input type="number" id="value" inputmode="numeric" step="1" min="20" max="800" placeholder="مثال: 110" required>
+        </div>
+        <div class="full">
+          <label for="type">نوع القياس</label>
+          <select id="type" required>
+            <option value="fasting">صائم (قبل الفطار)</option>
+            <option value="afterMeal">بعد الأكل بساعتين</option>
+            <option value="beforeSleep">قبل النوم</option>
+            <option value="random">عشوائي</option>
+          </select>
+        </div>
+        <div>
+          <label for="date">التاريخ</label>
+          <input type="date" id="date" required>
+        </div>
+        <div>
+          <label for="time">الوقت</label>
+          <input type="time" id="time" required>
+        </div>
+        <div class="full">
+          <label for="notes">ملاحظات (اختياري)</label>
+          <textarea id="notes" placeholder="مثال: بعد مشي 30 دقيقة / أكلت كشري / حسيت بدوخة"></textarea>
+        </div>
+      </div>
+
+      <div style="margin-top:14px">
+        <button type="submit" class="btn btn-primary">✅ سجّل القراءة</button>
+      </div>
+
+      <div class="autosave" id="autosaveBox">
+        <input type="checkbox" id="autoExport">
+        <label for="autoExport">حفظ تلقائي في ملف إكسل (اختر ملف مرة واحدة)</label>
+        <span class="status status-off" id="autosaveStatus">متوقف</span>
+      </div>
+      <div id="autosaveHint" style="font-size:.75rem;color:#64748b;margin-top:6px;display:none;"></div>
+    </form>
+  </section>
+
+  <!-- ======== نتيجة القراءة ======== -->
+  <section class="card" id="resultCard">
+    <div class="result-head">
+      <div class="result-value" id="rValue">— <small>mg/dL</small></div>
+      <span class="badge" id="rBadge">—</span>
+    </div>
+    <div class="result-meaning" id="rMeaning"></div>
+
+    <div class="advice-block now">
+      <h4>🚨 اعمل إيه دلوقتي؟</h4>
+      <ul id="rImmediate"></ul>
+    </div>
+
+    <div class="advice-block">
+      <h4>💡 نصائح يومية لحالتك</h4>
+      <ul id="rDaily"></ul>
+    </div>
+  </section>
+
+  <!-- ======== الإحصائيات ======== -->
+  <section class="stats" id="stats">
+    <div class="stat"><div class="num" id="sCount">0</div><div class="lbl">عدد القياسات</div></div>
+    <div class="stat"><div class="num" id="sAvg">—</div><div class="lbl">المتوسط</div></div>
+    <div class="stat"><div class="num" id="sHigh">0</div><div class="lbl">قراءات مرتفعة</div></div>
+    <div class="stat"><div class="num" id="sInRange">—</div><div class="lbl">في المعدل</div></div>
+  </section>
+
+  <!-- ======== الرسم البياني ======== -->
+  <section class="card">
+    <h2><span class="ico">📈</span> آخر 15 قراءة</h2>
+    <canvas id="chart"></canvas>
+    <div class="chart-empty" id="chartEmpty">لسه مفيش قراءات مسجلة</div>
+  </section>
+
+  <!-- ======== نصيحة اليوم ======== -->
+  <section class="card">
+    <h2><span class="ico">🌿</span> نصيحة اليوم</h2>
+    <div class="tip-box">
+      <span class="emoji">💡</span>
+      <span id="tipText">—</span>
+    </div>
+    <div class="toolbar">
+      <button type="button" class="btn btn-ghost btn-sm" id="nextTip">نصيحة تانية ↻</button>
+    </div>
+  </section>
+
+  <!-- ======== السجل ======== -->
+  <section class="card">
+    <h2><span class="ico">📊</span> سجل القراءات</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>التاريخ</th>
+            <th>الوقت</th>
+            <th>النوع</th>
+            <th>القراءة</th>
+            <th>التقييم</th>
+            <th>ملاحظات</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="7" class="empty-row">لسه مفيش قراءات مسجلة — ابدأ بتسجيل أول قراءة 👆</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="toolbar">
+      <button type="button" class="btn btn-ghost btn-sm" id="exportBtn">⬇️ تنزيل ملف إكسل</button>
+      <button type="button" class="btn btn-danger btn-sm" id="clearBtn">🗑️ حذف كل السجل</button>
+    </div>
+    <div id="exportHint" style="font-size:.75rem;color:#64748b;margin-top:8px;"></div>
+  </section>
+
+</main>
+
+<div class="disclaimer">
+  ⚠️ هذا التطبيق أداة مساعدة لتسجيل القراءات ومتابعة النمط فقط، وليس بديلاً عن الطبيب أو الصيدلي.
+  لا تغيّر جرعة الدواء بناءً على هذه النصائح. في حال قراءة أعلى من 300 أو أقل من 54 أو وجود أعراض شديدة، تواصل مع الطبيب فوراً.
+</div>
+
+<script>
+/* =========================================================
+   0) كشف دعم المتصفح
+   ========================================================= */
+const SUPPORTS_FS = typeof window.showSaveFilePicker === 'function';
+const HAS_XLSX = (typeof XLSX !== 'undefined');
+
+/* =========================================================
+   1) الثوابت والنصوص
+   ========================================================= */
+const STORAGE_KEY = 'sugar-records-v1';
+const PATIENT_KEY = 'sugar-patient-v1';
+
+const TYPE_LABELS = {
+  fasting:     'صائم (قبل الفطار)',
+  afterMeal:   'بعد الأكل بساعتين',
+  beforeSleep: 'قبل النوم',
+  random:      'عشوائي'
+};
+
+const LEVEL_COLORS = {
+  'normal':       '#16a34a',
+  'slightly-high':'#eab308',
+  'high':         '#f97316',
+  'very-high':    '#dc2626',
+  'low':          '#f97316',
+  'critical-low': '#dc2626'
+};
+
+const ADVICE = {
+  'normal': {
+    title: 'طبيعي ✅',
+    meaning: 'قراءتك في المعدل الطبيعي — استمر على نفس النظام، ده أحسن رد على مجهودك.',
+    immediate: [
+      'كمّل يومك بشكل طبيعي واشرب كوب مية.',
+      'حافظ على مواعيد الدوا بالظبط زي ما الطبيب وصف.',
+      'سجّل القراءة دي كمرجع لنمطك اليومي.'
+    ],
+    daily: [
+      'امشي 30 دقيقة على الأقل يومياً.',
+      'قلل السكريات والحلويات والدهون المشبعة.',
+      'خلي نص طبقك خضار، وربعه بروتين، وربعه نشويات كاملة.',
+      'نام 7–8 ساعات وقلل التوتر.',
+      'اقيس السكر في نفس المواعيد يومياً عشان تعرف نمط جسمك.'
+    ]
+  },
+  'slightly-high': {
+    title: 'مرتفع قليلاً ⚠️',
+    meaning: 'القراءة أعلى من الطبيعي شوية، بس مش في المنطقة الخطرة. تعديل بسيط في الأكل والحركة كفاية لرجوعها.',
+    immediate: [
+      'اشرب كوبين مية على الأقل.',
+      'امشي 15–20 دقيقة لو تقدر.',
+      'تجنب النشويات والسكريات في الوجبة الجاية (عيش أبيض، رز، حلويات، عصاير).',
+      'أعد القياس بعد ساعتين واتأكد إنها بتنزل.'
+    ],
+    daily: [
+      'قلل كمية الكربوهيدرات في الوجبات الرئيسية.',
+      'ابدأ الوجبة بسلطة أو خضار قبل النشويات — بينزل ارتفاع السكر.',
+      'قسّم أكلك على 4–5 وجبات صغيرة بدل 3 كبيرة.',
+      'مارس رياضة يومياً (مشي سريع 30 دقيقة كافي).',
+      'قلل العصاير والمشروبات الغازية واستبدلها بمية أو شاي بدون سكر.'
+    ]
+  },
+  'high': {
+    title: 'مرتفع 🔴',
+    meaning: 'قراءتك أعلى من المستهدف. محتاجة متابعة ومراجعة للأكل والدوا مع الطبيب لو تكررت.',
+    immediate: [
+      'اشرب مية كتير على مدار اليوم.',
+      'امشي 20–30 دقيقة لو مفيش عندك أعراض خطر (دوخة شديدة، ألم صدر، تنفس سريع).',
+      'امتنع عن السكريات والنشويات في الوجبة الجاية.',
+      'أعد القياس بعد ساعتين.',
+      'لو القراءة استمرت مرتفعة أكتر من يوم، اتصل بالطبيب.'
+    ],
+    daily: [
+      'راجع كمية الأكل ونوعه مع أخصائي تغذية لو ممكن.',
+      'قلل العيش الأبيض والمكرونة والرز واستبدلهم بحبوب كاملة.',
+      'داوم على الرياضة — المشي بينزل السكر بشكل ملحوظ.',
+      'راجع مواعيد وجرعات الدوا مع الطبيب (متغيرهاش بنفسك).',
+      'راقب ضغطك ووزنك، وبعض الأدوية بترفع السكر — اسأل طبيبك.'
+    ]
+  },
+  'very-high': {
+    title: 'مرتفع جداً 🚨',
+    meaning: 'القراءة دي عالية جداً ومحتاجة انتباه. لو معاك أعراض زي عطش شديد أو تبول كتير أو غثيان، لازم تتواصل مع الطبيب فوراً.',
+    immediate: [
+      'أعد القياس للتأكد من القراءة.',
+      'اشرب مية بكميات كافية على مدار اليوم.',
+      'امتنع تماماً عن السكريات والنشويات في الوجبة الجاية.',
+      'لو القراءة فوق 300 أو عندك عطش شديد/غثيان/قيء/تنفس سريع — اتصل بالطبيب أو الطوارئ فوراً.',
+      'لو عندك جهاز كيتونات، افحص — ظهور كيتونات حالة طارئة.'
+    ],
+    daily: [
+      'راجع الطبيب في أقرب وقت لتعديل الخطة العلاجية.',
+      'التزم بنظام غذائي منخفض الكربوهيدرات.',
+      'حافظ على شرب مية بانتظام طوال اليوم.',
+      'سجّل كل قراءة عشان الطبيب يشوف النمط بوضوح.',
+      'خلي حد من أهلك عارف إنك متابع سكرك وممكن تحتاج مساعدة.'
+    ]
+  },
+  'low': {
+    title: 'منخفض 🟠',
+    meaning: 'سكرك أقل من الطبيعي — محتاج ترفعه بسرعة عشان متوصلش لحالة إغماء.',
+    immediate: [
+      'كل أو اشرب 15 جرام سكر سريع فوراً: نصف كوب عصير، أو 3 ملاعق سكر في مية، أو 3 أقراص جلوكوز.',
+      'استنى 15 دقيقة وأعد القياس.',
+      'لو لسه أقل من 70، كرر الخطوة تاني.',
+      'بعد ما يرجع طبيعي، كل وجبة خفيفة فيها كربوهيدرات معقدة (عيش + جبنة) لتثبيت السكر.'
+    ],
+    daily: [
+      'خلي معاك دايماً حلوى سريعة أو أقراص جلوكوز في جيبك وفي البيت.',
+      'متسيبش نفسك من غير أكل لفترات طويلة.',
+      'قس سكرك قبل الرياضة، ولو أقل من 100 كل حاجة خفيفة قبلها.',
+      'راجع جرعة الأنسولين أو الدوا مع الطبيب — ممكن تكون عالية.',
+      'علّم أهلك أعراض الانخفاض (تعرق، رعشة، دوخة، جوع مفاجئ).'
+    ]
+  },
+  'critical-low': {
+    title: 'انخفاض شديد 🚨',
+    meaning: 'القراءة دي خطيرة ومحتاجة تصرف فوري. لو الشخص مش قادر يبلع، لازم حد يساعده فوراً.',
+    immediate: [
+      'كل أو اشرب سكر سريع فوراً (عصير / عسل / أقراص جلوكوز).',
+      'لو مش قادر تبلع، خلي حد يديك جلوكوز جل أو يستدعي الإسعاف فوراً.',
+      'أعد القياس كل 15 دقيقة لحد ما ترجع فوق 70.',
+      'بعد التحسن، كل وجبة كاملة لتثبيت السكر.',
+      'اتصل بالطبيب بعد الحالة عشان يراجع جرعات الدوا.'
+    ],
+    daily: [
+      'راجع الطبيب فوراً — الانخفاض الشديد مؤشر إن الجرعة محتاجة تعديل.',
+      'متكونش لوحدك وقت فترات الانخفاض المتوقعة.',
+      'خلي أهلك أو زملاء الشغل عارفين إزاي يتعاملوا مع الانخفاض.',
+      'احمل كارت أو سلسلة توضح إنك مريض سكر.',
+      'راقب السكر قبل النوم — الانخفاض الليلي خطير.'
+    ]
+  }
+};
+
+const DAILY_TIPS = [
+  'اشرب من 8 لـ 10 أكواب مية في اليوم — المية بتنزل السكر وتساعد الكلى.',
+  'امشي 30 دقيقة يومياً، والمشي بعد الأكل بـ 15 دقيقة بينزل السكر بشكل ملحوظ.',
+  'ابدأ وجبتك بطبق سلطة أو خضار قبل النشويات — ده بيقلل ارتفاع السكر.',
+  'استبدل العيش الأبيض والمكرونة بالحبوب الكاملة (عيش بلدي، شوفان، برغل).',
+  'خلي معاك دايماً حاجة سكرية سريعة (عصير/حلوى) لمواجهة انخفاض السكر.',
+  'قس سكرك في نفس المواعيد كل يوم عشان تعرف نمط جسمك.',
+  'النوم أقل من 6 ساعات بيرفع السكر — حاول تنام 7–8 ساعات.',
+  'التوتر والقلق بيرفعوا السكر — جرب تمارين تنفس أو مشي.',
+  'قلل العصاير والمشروبات الغازية، حتى "الدايت" منها مش أفضل حل.',
+  'خلي نص طبقك خضار، وربعه بروتين، وربعه نشويات كاملة.',
+  'متعملش رياضة عنيفة على معدة فاضية لو سكرك أقل من 100.',
+  'راجع عينيك وكليتك مرة كل سنة — السكر بيأثر عليهم بهدوء.',
+  'قلل الملح والأكل المصنّع — بيحافظ على ضغطك وكليتك.',
+  'سجّل كل قراءة — الأرقام هي اللي بتخلي الطبيب يشخص صح.',
+  'لو سكرك مرتفع باستمرار، اسأل طبيبك عن تحليل HbA1c كل 3 شهور.'
+];
+
+/* =========================================================
+   2) التخزين
+   ========================================================= */
+function loadRecords(){
+  try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+  catch(e){ return []; }
+}
+function saveRecords(recs){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(recs));
+    return true;
+  } catch(e){
+    alert('مش قادر يحفظ في ذاكرة المتصفح. جرب تستخدم متصفح تاني أو تفتح الملف على السيرفر.');
+    return false;
+  }
+}
+
+function loadPatient(){
+  try{ return JSON.parse(localStorage.getItem(PATIENT_KEY)) || {}; }
+  catch(e){ return {}; }
+}
+function savePatient(p){
+  try{ localStorage.setItem(PATIENT_KEY, JSON.stringify(p)); return true; }
+  catch(e){ return false; }
+}
+
+/* =========================================================
+   3) بيانات المريض
+   ========================================================= */
+function renderPatientInputs(){
+  const p = loadPatient();
+  document.getElementById('pName').value = p.name || '';
+  document.getElementById('pAge').value = p.age || '';
+}
+
+function updateHeaderPatient(){
+  const p = loadPatient();
+  const el = document.getElementById('patientBadge');
+  const parts = [];
+  if (p.name) parts.push('👤 ' + p.name);
+  if (p.age) parts.push(p.age + ' سنة');
+  if (parts.length){
+    el.textContent = parts.join(' • ');
+    el.style.display = 'inline-block';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+let patientSaveTimer = null;
+function savePatientFromForm(){
+  const name = document.getElementById('pName').value.trim();
+  const ageRaw = document.getElementById('pAge').value.trim();
+  let age = '';
+  if (ageRaw){
+    const n = parseInt(ageRaw, 10);
+    if (isNaN(n) || n < 1 || n > 120){
+      const s = document.getElementById('patientSaveStatus');
+      s.textContent = '⚠️ السن لازم يكون رقم بين 1 و 120';
+      s.style.color = '#dc2626';
+      return;
+    }
+    age = n;
+  }
+  savePatient({name, age});
+  updateHeaderPatient();
+  const s = document.getElementById('patientSaveStatus');
+  s.textContent = '✓ بيانات المريض محفوظة';
+  s.style.color = '#16a34a';
+  clearTimeout(patientSaveTimer);
+  patientSaveTimer = setTimeout(() => { s.textContent = ''; }, 2500);
+}
+
+function getPatientFilenameSuffix(){
+  const p = loadPatient();
+  if (!p.name) return '';
+  const safe = p.name.replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, '-').slice(0, 30);
+  return '-' + safe;
+}
+
+/* =========================================================
+   4) تصنيف القراءة
+   ========================================================= */
+function getStatus(value, type){
+  let level;
+  if (value < 54)                     level = 'critical-low';
+  else if (value < 70)                level = 'low';
+  else if (type === 'fasting'){
+    if (value <= 99)                  level = 'normal';
+    else if (value <= 125)            level = 'slightly-high';
+    else if (value <= 180)            level = 'high';
+    else                              level = 'very-high';
+  }
+  else if (type === 'afterMeal'){
+    if (value < 140)                  level = 'normal';
+    else if (value < 180)             level = 'slightly-high';
+    else if (value < 250)             level = 'high';
+    else                              level = 'very-high';
+  }
+  else {
+    if (value < 140)                  level = 'normal';
+    else if (value < 200)             level = 'slightly-high';
+    else if (value < 250)             level = 'high';
+    else                              level = 'very-high';
+  }
+  const info = ADVICE[level];
+  return { level, label: info.title, color: LEVEL_COLORS[level], ...info };
+}
+
+/* =========================================================
+   5) عرض النتيجة
+   ========================================================= */
+function showResult(value, status){
+  const card = document.getElementById('resultCard');
+  document.getElementById('rValue').innerHTML = value + ' <small>mg/dL</small>';
+  document.getElementById('rValue').style.color = status.color;
+
+  const badge = document.getElementById('rBadge');
+  badge.textContent = status.label;
+  badge.style.background = status.color;
+
+  card.style.borderRightColor = status.color;
+  document.getElementById('rMeaning').textContent = status.meaning;
+
+  fillList('rImmediate', status.immediate);
+  fillList('rDaily', status.daily);
+
+  card.classList.add('show');
+  card.scrollIntoView({behavior:'smooth', block:'center'});
+}
+function fillList(id, items){
+  const ul = document.getElementById(id);
+  ul.innerHTML = '';
+  items.forEach(t => {
+    const li = document.createElement('li');
+    li.textContent = t;
+    ul.appendChild(li);
+  });
+}
+
+/* =========================================================
+   6) الجدول والإحصائيات
+   ========================================================= */
+function renderTable(){
+  const tbody = document.getElementById('tbody');
+  const recs = loadRecords().slice().sort((a,b) => {
+    return (b.date + ' ' + b.time).localeCompare(a.date + ' ' + a.time);
+  });
+
+  if (!recs.length){
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-row">لسه مفيش قراءات مسجلة — ابدأ بتسجيل أول قراءة 👆</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = recs.map(r => {
+    const color = LEVEL_COLORS[r.level] || '#64748b';
+    const notes = (r.notes || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+    return `<tr>
+      <td>${r.date}</td>
+      <td>${r.time}</td>
+      <td>${TYPE_LABELS[r.type] || r.type}</td>
+      <td style="font-weight:800">${r.value}</td>
+      <td><span class="pill" style="background:${color}">${r.statusLabel}</span></td>
+      <td style="white-space:normal;min-width:120px;color:#64748b">${notes || '—'}</td>
+      <td><button class="btn btn-danger btn-sm" data-del="${r.id}">حذف</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderStats(){
+  const recs = loadRecords();
+  const count = recs.length;
+  document.getElementById('sCount').textContent = count;
+
+  if (!count){
+    document.getElementById('sAvg').textContent = '—';
+    document.getElementById('sHigh').textContent = '0';
+    document.getElementById('sInRange').textContent = '—';
+    return;
+  }
+
+  const avg = Math.round(recs.reduce((s,r) => s + r.value, 0) / count);
+  const high = recs.filter(r => r.level === 'high' || r.level === 'very-high').length;
+  const inRange = recs.filter(r => r.level === 'normal').length;
+
+  const avgEl = document.getElementById('sAvg');
+  avgEl.textContent = avg;
+  avgEl.style.color = avg < 70 ? '#f97316' : avg > 180 ? '#dc2626' : avg > 130 ? '#eab308' : '#16a34a';
+
+  document.getElementById('sHigh').textContent = high;
+  document.getElementById('sHigh').style.color = high ? '#dc2626' : '#16a34a';
+
+  const pct = Math.round((inRange / count) * 100);
+  const irEl = document.getElementById('sInRange');
+  irEl.textContent = pct + '%';
+  irEl.style.color = pct >= 70 ? '#16a34a' : pct >= 40 ? '#eab308' : '#f97316';
+}
+
+/* =========================================================
+   7) الرسم البياني
+   ========================================================= */
+function drawChart(){
+  const canvas = document.getElementById('chart');
+  const emptyMsg = document.getElementById('chartEmpty');
+  const recs = loadRecords().slice(-15);
+
+  if (!recs.length){
+    canvas.style.display = 'none';
+    emptyMsg.style.display = 'block';
+    return;
+  }
+  canvas.style.display = 'block';
+  emptyMsg.style.display = 'none';
+
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth || 600;
+  const h = 220;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  const pad = { l: 42, r: 14, t: 16, b: 28 };
+  const cw = w - pad.l - pad.r;
+  const ch = h - pad.t - pad.b;
+
+  const maxV = Math.max(220, ...recs.map(r => r.value)) + 20;
+  const yOf = v => pad.t + ch - (v / maxV) * ch;
+
+  const refs = [
+    { v: 70,  c: '#f97316', t: '70'  },
+    { v: 140, c: '#eab308', t: '140' },
+    { v: 180, c: '#dc2626', t: '180' }
+  ];
+  ctx.font = '11px Cairo, sans-serif';
+  ctx.textAlign = 'right';
+  refs.forEach(ref => {
+    if (ref.v > maxV) return;
+    const y = yOf(ref.v);
+    ctx.strokeStyle = ref.c + '55';
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = ref.c;
+    ctx.fillText(ref.t, pad.l - 6, y + 4);
+  });
+
+  const step = recs.length > 1 ? cw / (recs.length - 1) : 0;
+  const pts = recs.map((r, i) => ({
+    x: pad.l + (recs.length === 1 ? cw / 2 : i * step),
+    y: yOf(r.value),
+    r
+  }));
+
+  ctx.strokeStyle = '#0891b2';
+  ctx.lineWidth = 2.5;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+  ctx.stroke();
+
+  pts.forEach(p => {
+    ctx.fillStyle = LEVEL_COLORS[p.r.level] || '#0891b2';
+    ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+  });
+
+  ctx.fillStyle = '#334155';
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 11px Cairo, sans-serif';
+  if (pts.length){
+    ctx.fillText(pts[0].r.value, pts[0].x, pts[0].y - 11);
+    if (pts.length > 1){
+      const last = pts[pts.length - 1];
+      ctx.fillText(last.r.value, last.x, last.y - 11);
+    }
+  }
+}
+
+/* =========================================================
+   8) بناء بيانات الورك بوك (مع بيانات المريض)
+   ========================================================= */
+function buildWorkbookData(){
+  const patient = loadPatient();
+  const recs = loadRecords().slice().sort((a,b) => {
+    return (a.date + ' ' + a.time).localeCompare(b.date + ' ' + b.time);
+  });
+
+  const data = [];
+
+  // بيانات المريض أولاً
+  if (patient.name || patient.age){
+    data.push(['بيانات المريض']);
+    data.push(['الاسم', patient.name || '—']);
+    data.push(['السن', patient.age || '—']);
+    data.push([]);
+  }
+
+  data.push(['التاريخ', 'الوقت', 'نوع القياس', 'القراءة (mg/dL)', 'التقييم', 'ملاحظات']);
+
+  recs.forEach(r => {
+    data.push([
+      r.date, r.time,
+      TYPE_LABELS[r.type] || r.type,
+      r.value,
+      r.statusLabel,
+      r.notes || ''
+    ]);
+  });
+
+  const count = recs.length;
+  if (count){
+    const avg = Math.round(recs.reduce((s,r) => s + r.value, 0) / count);
+    const highs = recs.filter(r => r.level === 'high' || r.level === 'very-high').length;
+    const inRange = recs.filter(r => r.level === 'normal').length;
+    data.push([]);
+    data.push(['ملخص']);
+    data.push(['عدد القياسات', count]);
+    data.push(['متوسط القراءات', avg, 'mg/dL']);
+    data.push(['قراءات مرتفعة', highs]);
+    data.push(['قراءات في المعدل', inRange, `(${Math.round(inRange/count*100)}%)`]);
+  }
+
+  return data;
+}
+
+/* =========================================================
+   9) تصدير إكسل / CSV
+   ========================================================= */
+function buildXlsxBlobOrArray(){
+  const data = buildWorkbookData();
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!dir'] = 'rtl';
+  ws['!cols'] = [
+    {wch: 13}, {wch: 9}, {wch: 20}, {wch: 16}, {wch: 16}, {wch: 34}
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'سجل السكر');
+  return XLSX.write(wb, {bookType:'xlsx', type:'array'});
+}
+
+function fallbackCSV(){
+  const data = buildWorkbookData();
+  const csv = data.map(row => row.map(cell => {
+    const s = String(cell == null ? '' : cell);
+    return '"' + s.replace(/"/g, '""') + '"';
+  }).join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8;'});
+  const today = new Date().toISOString().slice(0,10);
+  downloadBlob(blob, `سجل-السكر${getPatientFilenameSuffix()}-${today}.csv`);
+}
+
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+function manualExport(){
+  const recs = loadRecords();
+  if (!recs.length){ alert('لسه مفيش قراءات لتصديرها.'); return; }
+  const today = new Date().toISOString().slice(0,10);
+  try {
+    if (HAS_XLSX){
+      const buf = buildXlsxBlobOrArray();
+      const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+      downloadBlob(blob, `سجل-السكر${getPatientFilenameSuffix()}-${today}.xlsx`);
+    } else {
+      fallbackCSV();
+      setExportHint('مكتبة الإكسل مش متحملة، نزلناه CSV — إكسل هيفتحه عادي.', 'warn');
+    }
+  } catch(e){
+    console.error(e);
+    fallbackCSV();
+    setExportHint('حصل خطأ، نزلناه CSV كبديل.', 'warn');
+  }
+}
+
+function setExportHint(msg, kind){
+  const el = document.getElementById('exportHint');
+  el.textContent = msg;
+  el.style.color = kind === 'warn' ? '#9a3412' : '#64748b';
+}
+
+/* =========================================================
+   10) الحفظ التلقائي عبر File System Access API
+   ========================================================= */
+let fileHandle = null;
+
+function setAutoStatus(text, kind){
+  const el = document.getElementById('autosaveStatus');
+  el.textContent = text;
+  el.className = 'status ' + (kind === 'ok' ? 'status-ok' : kind === 'warn' ? 'status-warn' : 'status-off');
+}
+
+async function pickSaveFile(){
+  if (!SUPPORTS_FS) return false;
+  try {
+    fileHandle = await window.showSaveFilePicker({
+      suggestedName: `سجل-السكر${getPatientFilenameSuffix()}.xlsx`,
+      types: [{
+        description: 'Excel Workbook',
+        accept: {'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']}
+      }]
+    });
+    return true;
+  } catch(e){
+    if (e.name !== 'AbortError') console.error(e);
+    return false;
+  }
+}
+
+async function writeToFile(){
+  if (!fileHandle) return false;
+  if (!HAS_XLSX) return false;
+  try {
+    if (fileHandle.queryPermission){
+      let perm = await fileHandle.queryPermission({mode:'readwrite'});
+      if (perm !== 'granted' && fileHandle.requestPermission){
+        perm = await fileHandle.requestPermission({mode:'readwrite'});
+      }
+      if (perm !== 'granted') return false;
+    }
+    const buf = buildXlsxBlobOrArray();
+    const writable = await fileHandle.createWritable();
+    await writable.write(buf);
+    await writable.close();
+    return true;
+  } catch(e){
+    console.error(e);
+    return false;
+  }
+}
+
+/* =========================================================
+   11) نصائح اليوم
+   ========================================================= */
+let tipIndex = Math.floor(Math.random() * DAILY_TIPS.length);
+function showTip(){
+  document.getElementById('tipText').textContent = DAILY_TIPS[tipIndex % DAILY_TIPS.length];
+  tipIndex++;
+}
+
+/* =========================================================
+   12) التهيئة والأحداث
+   ========================================================= */
+function pad(n){ return String(n).padStart(2,'0'); }
+function setDefaults(){
+  const now = new Date();
+  document.getElementById('date').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  document.getElementById('time').value = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}
+
+// تهيئة واجهة الحفظ التلقائي
+(function initAutoSaveUI(){
+  const hint = document.getElementById('autosaveHint');
+  if (!SUPPORTS_FS){
+    document.getElementById('autoExport').disabled = true;
+    setAutoStatus('غير مدعوم', 'warn');
+    hint.style.display = 'block';
+    hint.textContent = 'المتصفح ده مش بيدعم الحفظ التلقائي في ملف. استخدم زر «تنزيل ملف إكسل» بعد كل قراءة — بيشتغل في كل المتصفحات.';
+  } else if (!HAS_XLSX){
+    setAutoStatus('مكتبة الإكسل مش محملة', 'warn');
+    hint.style.display = 'block';
+    hint.textContent = 'مكتبة إكسل مش اتحملت من الإنترنت. جرب تحدّث الصفحة، أو استخدم زر التنزيل اللي هيحوّلك CSV.';
+  } else {
+    setAutoStatus('متوقف', 'off');
+    hint.style.display = 'block';
+    hint.textContent = 'لما تفعّل الخيار، هيظهرلك اختيار مكان الملف. بعد كده كل قراءة تتسجل هتتكتب فيه أوتوماتيك بدون تحميل جديد.';
+  }
+})();
+
+// بيانات المريض: تحميل + حفظ تلقائي عند الكتابة
+renderPatientInputs();
+updateHeaderPatient();
+
+['pName','pAge'].forEach(id => {
+  document.getElementById(id).addEventListener('input', function(){
+    clearTimeout(this._t);
+    this._t = setTimeout(savePatientFromForm, 350);
+  });
+});
+document.getElementById('pAge').addEventListener('blur', savePatientFromForm);
+document.getElementById('pName').addEventListener('blur', savePatientFromForm);
+
+// checkbox الحفظ التلقائي
+document.getElementById('autoExport').addEventListener('change', async function(){
+  if (this.checked){
+    if (!SUPPORTS_FS){ this.checked = false; setAutoStatus('غير مدعوم', 'warn'); return; }
+    if (!HAS_XLSX){ this.checked = false; setAutoStatus('مكتبة الإكسل مش محملة', 'warn'); return; }
+    setAutoStatus('جاري اختيار الملف...', 'warn');
+    const ok = await pickSaveFile();
+    if (!ok){ this.checked = false; setAutoStatus('تم إلغاء الاختيار', 'warn'); return; }
+    const wrote = await writeToFile();
+    if (wrote){
+      setAutoStatus('متصل ✓', 'ok');
+      setExportHint('اتصلنا بالملف — أي قراءة جديدة هتتحفظ فيه أوتوماتيك.', 'ok');
+    } else {
+      this.checked = false;
+      fileHandle = null;
+      setAutoStatus('فشل الاتصال', 'warn');
+    }
+  } else {
+    fileHandle = null;
+    setAutoStatus('متوقف', 'off');
+  }
+});
+
+// submit الفورم
+document.getElementById('form').addEventListener('submit', async function(e){
+  e.preventDefault();
+
+  const value = parseFloat(document.getElementById('value').value);
+  const type = document.getElementById('type').value;
+  const date = document.getElementById('date').value;
+  const time = document.getElementById('time').value;
+  const notes = document.getElementById('notes').value.trim();
+
+  if (isNaN(value) || value < 20 || value > 800){
+    alert('من فضلك اكتب قراءة صحيحة بين 20 و 800 mg/dL'); return;
+  }
+  if (!date || !time){
+    alert('من فضلك حدد التاريخ والوقت'); return;
+  }
+
+  const status = getStatus(value, type);
+  const rec = {
+    id: Date.now() + Math.random(),
+    date, time, type, value, notes,
+    level: status.level,
+    statusLabel: status.label
+  };
+
+  const recs = loadRecords();
+  recs.push(rec);
+  if (!saveRecords(recs)) return;
+
+  showResult(value, status);
+  renderTable();
+  renderStats();
+  drawChart();
+
+  document.getElementById('form').reset();
+  setDefaults();
+
+  if (document.getElementById('autoExport').checked && fileHandle){
+    setAutoStatus('بيحفظ...', 'warn');
+    const ok = await writeToFile();
+    if (ok){
+      setAutoStatus('متصل ✓', 'ok');
+      setExportHint('✓ اتحفظت القراءة الجديدة في الملف تلقائياً.', 'ok');
+    } else {
+      setAutoStatus('فشل — أعد الاختيار', 'warn');
+      document.getElementById('autoExport').checked = false;
+      fileHandle = null;
+    }
+  } else {
+    setExportHint('اتسجلت محلياً. اضغط «تنزيل ملف إكسل» لتحديث الملف — أو فعّل الحفظ التلقائي.', '');
+  }
+});
+
+// حذف قراءة
+document.getElementById('tbody').addEventListener('click', function(e){
+  const btn = e.target.closest('[data-del]');
+  if (!btn) return;
+  if (!confirm('متأكد إنك عايز تحذف القراءة دي؟')) return;
+  const id = btn.getAttribute('data-del');
+  const recs = loadRecords().filter(r => String(r.id) !== id);
+  saveRecords(recs);
+  renderTable();
+  renderStats();
+  drawChart();
+});
+
+// حذف الكل (القراءات فقط، بيانات المريض تبقى)
+document.getElementById('clearBtn').addEventListener('click', function(){
+  if (!loadRecords().length){ alert('السجل فاضي أصلاً.'); return; }
+  if (!confirm('هتحذف كل القراءات نهائياً. متأكد؟ (بيانات المريض هتفضل محفوظة)')) return;
+  saveRecords([]);
+  renderTable();
+  renderStats();
+  drawChart();
+  document.getElementById('resultCard').classList.remove('show');
+});
+
+// تصدير يدوي
+document.getElementById('exportBtn').addEventListener('click', manualExport);
+
+// نصيحة تانية
+document.getElementById('nextTip').addEventListener('click', showTip);
+
+// إعادة رسم الشارت
+window.addEventListener('resize', drawChart);
+
+// تشغيل
+setDefaults();
+renderTable();
+renderStats();
+drawChart();
+showTip();
+</script>
+
+</body>
+</html>
